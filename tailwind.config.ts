@@ -91,11 +91,15 @@ const config: Config = {
         "pulse-glow": {
           "0%, 100%": { opacity: "0.58" },
           "50%": { opacity: "1" }
+        },
+        shimmer: {
+          "100%": { transform: "translateX(100%)" }
         }
       },
       animation: {
         "fade-up": "fade-up 520ms cubic-bezier(0.16, 1, 0.3, 1) both",
-        "pulse-glow": "pulse-glow 2800ms ease-in-out infinite"
+        "pulse-glow": "pulse-glow 2800ms ease-in-out infinite",
+        shimmer: "shimmer 1800ms linear infinite"
       }
     }
   },
