@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 224 58% 4%;
+    --foreground: 210 40% 96%;
+    --card: 224 42% 8%;
+    --card-foreground: 210 40% 96%;
+    --popover: 224 42% 7%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 184 100% 52%;
+    --primary-foreground: 223 65% 4%;
+    --secondary: 226 32% 15%;
+    --secondary-foreground: 210 40% 94%;
+    --muted: 223 28% 14%;
+    --muted-foreground: 218 16% 66%;
+    --accent: 270 100% 70%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 218 24% 22%;
+    --input: 218 24% 22%;
+    --ring: 184 100% 52%;
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --neon-cyan: 184 100% 52%;
+    --neon-lime: 84 100% 62%;
+    --neon-rose: 342 100% 66%;
+    --neon-violet: 270 100% 70%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    color-scheme: dark;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply min-h-screen bg-background bg-cinematic-radial font-sans text-foreground antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    @apply bg-primary/30 text-foreground;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply border border-white/10 bg-glass-gradient shadow-glass backdrop-blur-2xl;
+  }
+
+  .cinematic-surface {
+    @apply border border-white/10 bg-card/70 shadow-premium-xl backdrop-blur-xl;
+  }
+
+  .neon-focus {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+}

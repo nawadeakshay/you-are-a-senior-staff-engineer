@@ -1,0 +1,363 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  INSTRUCTOR
+  ADMIN
+  SUPERADMIN
+}
+
+enum CourseStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+  ARCHIVED
+}
+
+enum LessonType {
+  VIDEO
+  LIVE_REPLAY
+  ARTICLE
+  EXERCISE
+  AI_PRACTICE
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum SubscriptionStatus {
+  INCOMPLETE
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  UNPAID
+}
+
+enum PaymentProvider {
+  STRIPE
+  RAZORPAY
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+enum CommunityVisibility {
+  PUBLIC
+  MEMBERS
+  COURSE
+}
+
+model User {
+  id                  String         @id @default(cuid())
+  clerkId             String?        @unique
+  authProviderAccount String?        @unique
+  email               String         @unique
+  name                String?
+  imageUrl            String?
+  role                UserRole       @default(STUDENT)
+  bio                 String?
+  country             String?
+  timezone            String?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  deletedAt           DateTime?
+
+  instructorProfile   InstructorProfile?
+  coursesAuthored     Course[]       @relation("CourseInstructor")
+  enrollments         Enrollment[]
+  subscriptions       Subscription[]
+  payments            Payment[]
+  achievements        UserAchievement[]
+  streak              PracticeStreak?
+  lessonProgress      LessonProgress[]
+  comments            Comment[]
+  posts               CommunityPost[]
+  postVotes           CommunityPostVote[]
+
+  @@index([role])
+  @@index([createdAt])
+}
+
+model InstructorProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  headline      String?
+  expertise     String[]
+  verifiedAt    DateTime?
+  payoutAccount String?
+  ratingAverage Decimal  @default(0) @db.Decimal(3, 2)
+  ratingCount   Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Course {
+  id              String       @id @default(cuid())
+  instructorId    String
+  slug            String       @unique
+  title           String
+  subtitle        String?
+  description     String?
+  level           String
+  status          CourseStatus @default(DRAFT)
+  language        String       @default("en")
+  thumbnailUrl    String?
+  trailerUrl      String?
+  priceCents      Int          @default(0)
+  currency        String       @default("USD")
+  publishedAt     DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  deletedAt       DateTime?
+
+  instructor      User         @relation("CourseInstructor", fields: [instructorId], references: [id])
+  modules         CourseModule[]
+  enrollments     Enrollment[]
+  comments        Comment[]
+  posts           CommunityPost[]
+
+  @@index([instructorId])
+  @@index([status, publishedAt])
+  @@index([level])
+}
+
+model CourseModule {
+  id        String   @id @default(cuid())
+  courseId  String
+  title     String
+  position  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons Lesson[]
+
+  @@unique([courseId, position])
+  @@index([courseId])
+}
+
+model Lesson {
+  id             String     @id @default(cuid())
+  moduleId       String
+  slug           String
+  title          String
+  summary        String?
+  type           LessonType @default(VIDEO)
+  videoUrl       String?
+  contentJson    Json?
+  durationSec    Int?
+  position       Int
+  isPreview      Boolean    @default(false)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  module     CourseModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  progress   LessonProgress[]
+  comments   Comment[]
+
+  @@unique([moduleId, slug])
+  @@unique([moduleId, position])
+  @@index([type])
+}
+
+model Enrollment {
+  id          String           @id @default(cuid())
+  userId      String
+  courseId    String
+  status      EnrollmentStatus @default(ACTIVE)
+  progressPct Decimal          @default(0) @db.Decimal(5, 2)
+  completedAt DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([courseId, status])
+}
+
+model LessonProgress {
+  id              String    @id @default(cuid())
+  userId          String
+  lessonId        String
+  watchedSeconds  Int       @default(0)
+  completedAt     DateTime?
+  lastAccessedAt  DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([lessonId])
+}
+
+model SubscriptionPlan {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  name            String
+  description     String?
+  priceCents      Int
+  currency        String   @default("USD")
+  interval        String
+  stripePriceId   String?  @unique
+  razorpayPlanId  String?  @unique
+  active          Boolean  @default(true)
+  features        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id                    String             @id @default(cuid())
+  userId                String
+  planId                String
+  provider              PaymentProvider
+  status                SubscriptionStatus @default(INCOMPLETE)
+  providerCustomerId    String?
+  providerSubscriptionId String?           @unique
+  currentPeriodStart    DateTime?
+  currentPeriodEnd      DateTime?
+  cancelAtPeriodEnd     Boolean            @default(false)
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  user User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan SubscriptionPlan @relation(fields: [planId], references: [id])
+
+  @@index([userId, status])
+  @@index([provider, status])
+}
+
+model Payment {
+  id                String          @id @default(cuid())
+  userId            String
+  provider          PaymentProvider
+  status            PaymentStatus   @default(PENDING)
+  amountCents       Int
+  currency          String
+  providerPaymentId String?         @unique
+  metadata          Json?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([provider, status])
+}
+
+model Achievement {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String
+  icon        String?
+  points      Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users UserAchievement[]
+}
+
+model UserAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  achievementId String
+  earnedAt      DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+}
+
+model PracticeStreak {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  currentDays    Int      @default(0)
+  longestDays    Int      @default(0)
+  lastPracticeAt DateTime?
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String?
+  lessonId  String?
+  parentId  String?
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course   Course?   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson   Lesson?   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  parent   Comment?  @relation("CommentThread", fields: [parentId], references: [id])
+  replies  Comment[] @relation("CommentThread")
+
+  @@index([courseId, createdAt])
+  @@index([lessonId, createdAt])
+  @@index([parentId])
+}
+
+model CommunityPost {
+  id          String              @id @default(cuid())
+  userId      String
+  courseId    String?
+  title       String
+  slug        String              @unique
+  body        String
+  visibility  CommunityVisibility @default(PUBLIC)
+  pinnedAt    DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  deletedAt   DateTime?
+
+  user   User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course?             @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  votes  CommunityPostVote[]
+
+  @@index([userId, createdAt])
+  @@index([courseId, createdAt])
+  @@index([visibility, createdAt])
+}
+
+model CommunityPostVote {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  value     Int
+  createdAt DateTime @default(now())
+
+  user User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@index([postId])
+}
