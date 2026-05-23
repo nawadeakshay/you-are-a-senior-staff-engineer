@@ -27,3 +27,6 @@ ekguitarist uses a dark cinematic system with neon cyan, violet, rose, and lime 
 - `--neon-lime`: mastery, streaks, success
 - `.glass-panel`: shared glassmorphism utility
 - `.cinematic-surface`: premium elevated surface
+- `.text-display-hero`: homepage-scale typography
+- `.shadow-neon-mix`: premium mixed neon elevation
+- `src/components/motion`: reusable reveal and stagger primitives
